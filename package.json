@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "build:gui": "npm explore guardiantest -- npm run bundle",
-    "test": "npx playwright test --project=chromium --headed"
+    "test": "npx playwright test --project=chromium --headed",
+    "install": "npx playwright install chromium"
   },
   "author": "",
   "license": "ISC",
