@@ -1,0 +1,16 @@
+{
+  "name": "test-package",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build:gui": "npm explore guardiantest -- npm run bundle",
+    "test": "npx playwright test --project=chromium --headed"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@guardianui/test": "^1.0.4"
+  }
+}
