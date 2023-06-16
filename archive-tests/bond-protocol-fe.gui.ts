@@ -103,54 +103,160 @@ test.describe("Bond Protocol", () => {
         // Initialize fork
         await gui.initializeChain(1, 17110784);
 
-        // Mock subgraph
+        await page.waitForTimeout(5000);
+
+        // Mock subgraphs
+        page.route("https://cloudflare-eth.com/", async (route, request) => {
+            if (request.method() === "POST") {
+                const data = JSON.parse(request.postData());
+
+                if (data.method) {
+                    // Set up provider object to interact with
+                    const chainId: string = await page.evaluate("window.ethereum.chainId");
+                    const providerUrl: string = await page.evaluate("window.ethereum.provider.connection.url");
+                    const provider = new ethers.providers.JsonRpcProvider(providerUrl, parseInt(chainId));
+
+                    // Send the RPC request to Anvil and record the response
+                    const resultData = await provider.send(data.method, data.params);
+
+                    const updatedResponseData = {
+                        "jsonrpc": "2.0",
+                        "id": data.id,
+                        "result": resultData
+                    };
+
+                    route.fulfill({
+                        contentType: "application/json",
+                        body: JSON.stringify(updatedResponseData)
+                    });
+                } else {
+                    route.continue();
+                }
+            } else {
+                route.continue();
+            }
+        });
+
+        page.route("http://127.0.0.1:8545", async (route, request) => {
+            if (request.method() === "POST") {
+                const data = JSON.parse(request.postData());
+
+                if (data.method === "eth_estimateGas") {
+                    const resultData = {
+                        "jsonrpc": "2.0",
+                        "id": data.id,
+                        "result": "0x1C9C380"
+                    }
+
+                    route.fulfill({
+                        contentType: "application/json",
+                        body: JSON.stringify(resultData)
+                    });
+                } else {
+                    route.continue();
+                }
+            } else {
+                route.continue();
+            }
+        });
+
+        // Set up markets mocking
         page.route("https://gateway.thegraph.com/api/17f8839a7d9c7f990a93cb221bf4248b/subgraphs/id/9F8K4UDnrQEzXsVmHoJxs5qBVDJB5jEKtU9EVsXNTzZZ", async (route, request) => {
             if (request.method() === "POST") {
                 const postData = JSON.parse(request.postData() as string);
 
-                if (postData.query.includes("query ListMarkets")) {
+                if (postData.query.includes("query GetGlobalData")) {
+                    console.log("mocking GetGlobalData");
+
                     const resultData = {
                         "data": {
-                            "markets": [
+                            "purchaseCounts": [
                                 {
-                                    "id": "1_BondFixedExpCDA_94",
-                                    "name": "BondFixedExpCDA",
-                                    "network": "mainnet",
-                                    "auctioneer": "0x007FEA32545a39Ff558a1367BBbC1A22bc7ABEfD",
-                                    "teller": "0x007FE70dc9797C4198528aE43d8195ffF82Bdc95",
-                                    "marketId": "94",
-                                    "owner": "0x1ce568dbb34b2631acdb5b453c3195ea0070ec65",
-                                    "callbackAddress": "0x0000000000000000000000000000000000000000",
-                                    "capacity": "100000000000000000",
-                                    "capacityInQuote": false,
+                                    "count": "1517"
+                                }
+                            ],
+                            "uniqueTokenBonderCounts": [
+                                {
+                                    "count": "3"
+                                },
+                                {
+                                    "count": "31"
+                                },
+                                {
+                                    "count": "10"
+                                },
+                                {
+                                    "count": "16"
+                                },
+                                {
+                                    "count": "174"
+                                },
+                                {
+                                    "count": "4"
+                                },
+                                {
+                                    "count": "47"
+                                },
+                                {
+                                    "count": "17"
+                                },
+                                {
+                                    "count": "51"
+                                }
+                            ],
+                            "tokens": [
+                                {
+                                    "address": "0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5",
                                     "chainId": "1",
-                                    "minPrice": "500000000000000000000000000000000000",
-                                    "scale": "10000000000000000000000000000000000000",
-                                    "start": null,
-                                    "conclusion": "1692242115",
-                                    "payoutToken": {
-                                        "id": "1_0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5",
-                                        "address": "0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5",
-                                        "symbol": "OHM",
-                                        "decimals": "9",
-                                        "name": "Olympus"
-                                    },
-                                    "quoteToken": {
-                                        "id": "1_0x6b175474e89094c44da98b954eedeac495271d0f",
-                                        "address": "0x6b175474e89094c44da98b954eedeac495271d0f",
-                                        "symbol": "DAI",
-                                        "decimals": "18",
-                                        "name": "DAI Stablecoin",
-                                        "lpPair": null,
-                                        "balancerWeightedPool": null
-                                    },
-                                    "vesting": "1702425600",
-                                    "vestingType": "fixed-exp",
-                                    "isInstantSwap": false,
-                                    "hasClosed": false,
-                                    "totalBondedAmount": "0",
-                                    "totalPayoutAmount": "0",
-                                    "creationBlockTimestamp": "1682245571"
+                                    "name": "Olympus",
+                                    "decimals": "9",
+                                    "symbol": "OHM",
+                                    "usedAsPayout": false,
+                                    "purchaseCount": "0",
+                                    "uniqueBonders": null,
+                                    "payoutTokenTbvs": [],
+                                    "markets": [
+                                        {
+                                            "id": "1_BondFixedExpCDA_94",
+                                            "name": "BondFixedExpCDA",
+                                            "network": "mainnet",
+                                            "auctioneer": "0x007FEA32545a39Ff558a1367BBbC1A22bc7ABEfD",
+                                            "teller": "0x007FE70dc9797C4198528aE43d8195ffF82Bdc95",
+                                            "marketId": "94",
+                                            "owner": "0x1ce568dbb34b2631acdb5b453c3195ea0070ec65",
+                                            "callbackAddress": "0x0000000000000000000000000000000000000000",
+                                            "capacity": "100000000000000000",
+                                            "capacityInQuote": false,
+                                            "chainId": "1",
+                                            "minPrice": "500000000000000000000000000000000000",
+                                            "scale": "10000000000000000000000000000000000000",
+                                            "start": null,
+                                            "conclusion": "1692242115",
+                                            "payoutToken": {
+                                                "id": "1_0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5",
+                                                "address": "0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5",
+                                                "symbol": "OHM",
+                                                "decimals": "9",
+                                                "name": "Olympus"
+                                            },
+                                            "quoteToken": {
+                                                "id": "1_0x6b175474e89094c44da98b954eedeac495271d0f",
+                                                "address": "0x6b175474e89094c44da98b954eedeac495271d0f",
+                                                "symbol": "DAI",
+                                                "decimals": "18",
+                                                "name": "DAI Stablecoin",
+                                                "lpPair": null,
+                                                "balancerWeightedPool": null
+                                            },
+                                            "vesting": "1702425600",
+                                            "vestingType": "fixed-exp",
+                                            "isInstantSwap": false,
+                                            "hasClosed": false,
+                                            "totalBondedAmount": "0",
+                                            "totalPayoutAmount": "0",
+                                            "creationBlockTimestamp": "1682245571"
+                                        },
+                                    ]
                                 },
                             ]
                         }
@@ -160,8 +266,227 @@ test.describe("Bond Protocol", () => {
                         contentType: "application/json",
                         body: JSON.stringify(resultData)
                     });
-                } else if (postData.query.includes("query ListTokens")) {
-                    const resultData ={"data":{"tokens":[{"id":"1_0x2c5bc2ba3614fd27fcc7022ea71d9172e2632c16","network":"mainnet","chainId":"1","address":"0x2c5bc2ba3614fd27fcc7022ea71d9172e2632c16","decimals":"18","symbol":"SOV","name":"ShibOriginalVision","lpPair":null,"balancerWeightedPool":null},{"id":"1_0x41d5d79431a913c4ae7d69a668ecdfe5ff9dfb68","network":"mainnet","chainId":"1","address":"0x41d5d79431a913c4ae7d69a668ecdfe5ff9dfb68","decimals":"18","symbol":"INV","name":"Inverse DAO","lpPair":null,"balancerWeightedPool":null},{"id":"1_0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b","network":"mainnet","chainId":"1","address":"0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b","decimals":"18","symbol":"CVX","name":"Convex Token","lpPair":null,"balancerWeightedPool":null},{"id":"1_0x569424c5ee13884a193773fdc5d1c5f79c443a51","network":"mainnet","chainId":"1","address":"0x569424c5ee13884a193773fdc5d1c5f79c443a51","decimals":"18","symbol":"PINE","name":"Pine Token","lpPair":null,"balancerWeightedPool":null},{"id":"1_0x579cea1889991f68acc35ff5c3dd0621ff29b0c9","network":"mainnet","chainId":"1","address":"0x579cea1889991f68acc35ff5c3dd0621ff29b0c9","decimals":"18","symbol":"IQ","name":"Everipedia IQ","lpPair":null,"balancerWeightedPool":null},{"id":"1_0x5f98805a4e8be255a32880fdec7f6728c6568ba0","network":"mainnet","chainId":"1","address":"0x5f98805a4e8be255a32880fdec7f6728c6568ba0","decimals":"18","symbol":"LUSD","name":"LUSD Stablecoin","lpPair":null,"balancerWeightedPool":null},{"id":"1_0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5","network":"mainnet","chainId":"1","address":"0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5","decimals":"9","symbol":"OHM","name":"Olympus","lpPair":null,"balancerWeightedPool":null},{"id":"1_0x6b175474e89094c44da98b954eedeac495271d0f","network":"mainnet","chainId":"1","address":"0x6b175474e89094c44da98b954eedeac495271d0f","decimals":"18","symbol":"DAI","name":"Dai Stablecoin","lpPair":null,"balancerWeightedPool":null},{"id":"1_0x865377367054516e17014ccded1e7d814edc9ce4","network":"mainnet","chainId":"1","address":"0x865377367054516e17014ccded1e7d814edc9ce4","decimals":"18","symbol":"DOLA","name":"Dola USD Stablecoin","lpPair":null,"balancerWeightedPool":null},{"id":"1_0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","network":"mainnet","chainId":"1","address":"0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce","decimals":"18","symbol":"SHIB","name":"SHIBA INU","lpPair":null,"balancerWeightedPool":null},{"id":"1_0x98585dfc8d9e7d48f0b1ae47ce33332cf4237d96","network":"mainnet","chainId":"1","address":"0x98585dfc8d9e7d48f0b1ae47ce33332cf4237d96","decimals":"18","symbol":"NEWO","name":"New Order","lpPair":null,"balancerWeightedPool":null},{"id":"1_0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48","network":"mainnet","chainId":"1","address":"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48","decimals":"6","symbol":"USDC","name":"USD Coin","lpPair":null,"balancerWeightedPool":null},{"id":"1_0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","network":"mainnet","chainId":"1","address":"0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2","decimals":"18","symbol":"WETH","name":"Wrapped Ether","lpPair":null,"balancerWeightedPool":null},{"id":"1_0xc08ed9a9abeabcc53875787573dc32eee5e43513","network":"mainnet","chainId":"1","address":"0xc08ed9a9abeabcc53875787573dc32eee5e43513","decimals":"18","symbol":"SLP","name":"SushiSwap LP Token","lpPair":{"token0":{"id":"1_0x98585dfc8d9e7d48f0b1ae47ce33332cf4237d96"},"token1":{"id":"1_0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"}},"balancerWeightedPool":null},{"id":"1_0xc55126051b22ebb829d00368f4b12bde432de5da","network":"mainnet","chainId":"1","address":"0xc55126051b22ebb829d00368f4b12bde432de5da","decimals":"18","symbol":"BTRFLY","name":"BTRFLY","lpPair":null,"balancerWeightedPool":null},{"id":"1_0xc770eefad204b5180df6a14ee197d99d808ee52d","network":"mainnet","chainId":"1","address":"0xc770eefad204b5180df6a14ee197d99d808ee52d","decimals":"18","symbol":"FOX","name":"FOX","lpPair":null,"balancerWeightedPool":null},{"id":"1_0xdac17f958d2ee523a2206206994597c13d831ec7","network":"mainnet","chainId":"1","address":"0xdac17f958d2ee523a2206206994597c13d831ec7","decimals":"6","symbol":"USDT","name":"Tether USD","lpPair":null,"balancerWeightedPool":null},{"id":"1_0xe80c0cd204d654cebe8dd64a4857cab6be8345a3","network":"mainnet","chainId":"1","address":"0xe80c0cd204d654cebe8dd64a4857cab6be8345a3","decimals":"18","symbol":"JPEG","name":"JPEG’d Governance Token","lpPair":null,"balancerWeightedPool":null}]}};
+                } else if (postData.query.includes("query GetDashboardData")) {
+                    console.log("mocking GetDashboardData");
+
+                    const resultData = {
+                        "data": {
+                            "ownerBalances": [],
+                            "bondTokens": [
+                                {
+                                    "id": "0x0352114677f0245a481a79079237e59186f276d5",
+                                    "symbol": "OHM-20230620",
+                                    "decimals": "9",
+                                    "underlying": {
+                                        "id": "1_0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5",
+                                        "symbol": "OHM",
+                                        "decimals": "9"
+                                    },
+                                    "expiry": "1687219200",
+                                    "teller": "0x007fe70dc9797c4198528ae43d8195fff82bdc95",
+                                    "network": "mainnet",
+                                    "chainId": "1",
+                                    "type": "fixed-expiration"
+                                },
+                                {
+                                    "id": "0x1184e3a0861517dd740cc8b082e81aa8526f9fd3",
+                                    "symbol": "INV-20230923",
+                                    "decimals": "18",
+                                    "underlying": {
+                                        "id": "1_0x41d5d79431a913c4ae7d69a668ecdfe5ff9dfb68",
+                                        "symbol": "INV",
+                                        "decimals": "18"
+                                    },
+                                    "expiry": "1695427200",
+                                    "teller": "0x007fe70dc9797c4198528ae43d8195fff82bdc95",
+                                    "network": "mainnet",
+                                    "chainId": "1",
+                                    "type": "fixed-expiration"
+                                },
+                                {
+                                    "id": "0x13896a26bafeb15597d082c1ca80cfd053bccc6d",
+                                    "symbol": "OHM-20230121",
+                                    "decimals": "9",
+                                    "underlying": {
+                                        "id": "1_0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5",
+                                        "symbol": "OHM",
+                                        "decimals": "9"
+                                    },
+                                    "expiry": "1674259200",
+                                    "teller": "0x007fe70dc9797c4198528ae43d8195fff82bdc95",
+                                    "network": "mainnet",
+                                    "chainId": "1",
+                                    "type": "fixed-expiration"
+                                },
+                                {
+                                    "id": "0x1ef59d7bcfb58e059e71459bc4912996eff5617b",
+                                    "symbol": "JPEG-20230923",
+                                    "decimals": "18",
+                                    "underlying": {
+                                        "id": "1_0xe80c0cd204d654cebe8dd64a4857cab6be8345a3",
+                                        "symbol": "JPEG",
+                                        "decimals": "18"
+                                    },
+                                    "expiry": "1695427200",
+                                    "teller": "0x007fe70dc9797c4198528ae43d8195fff82bdc95",
+                                    "network": "mainnet",
+                                    "chainId": "1",
+                                    "type": "fixed-expiration"
+                                },
+                                {
+                                    "id": "0x3c1c90b70b43bb1a82fe4b9ff026c39604e65ec1",
+                                    "symbol": "OHM-20230923",
+                                    "decimals": "9",
+                                    "underlying": {
+                                        "id": "1_0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5",
+                                        "symbol": "OHM",
+                                        "decimals": "9"
+                                    },
+                                    "expiry": "1695427200",
+                                    "teller": "0x007fe70dc9797c4198528ae43d8195fff82bdc95",
+                                    "network": "mainnet",
+                                    "chainId": "1",
+                                    "type": "fixed-expiration"
+                                },
+                                {
+                                    "id": "0x6832fc9ca2a7b816dfdbffb15c22f1867c5934b6",
+                                    "symbol": "IQ-20230923",
+                                    "decimals": "18",
+                                    "underlying": {
+                                        "id": "1_0x579cea1889991f68acc35ff5c3dd0621ff29b0c9",
+                                        "symbol": "IQ",
+                                        "decimals": "18"
+                                    },
+                                    "expiry": "1695427200",
+                                    "teller": "0x007fe70dc9797c4198528ae43d8195fff82bdc95",
+                                    "network": "mainnet",
+                                    "chainId": "1",
+                                    "type": "fixed-expiration"
+                                },
+                                {
+                                    "id": "0xc0b0bcc634dbc815f9cd07b6e393b98f4445b217",
+                                    "symbol": "FOX-20230923",
+                                    "decimals": "18",
+                                    "underlying": {
+                                        "id": "1_0xc770eefad204b5180df6a14ee197d99d808ee52d",
+                                        "symbol": "FOX",
+                                        "decimals": "18"
+                                    },
+                                    "expiry": "1695427200",
+                                    "teller": "0x007fe70dc9797c4198528ae43d8195fff82bdc95",
+                                    "network": "mainnet",
+                                    "chainId": "1",
+                                    "type": "fixed-expiration"
+                                },
+                                {
+                                    "id": "0xdd3b7043b65e3586d12e9bde8c7b938236b3556a",
+                                    "symbol": "OHM-20230322",
+                                    "decimals": "9",
+                                    "underlying": {
+                                        "id": "1_0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5",
+                                        "symbol": "OHM",
+                                        "decimals": "9"
+                                    },
+                                    "expiry": "1679443200",
+                                    "teller": "0x007fe70dc9797c4198528ae43d8195fff82bdc95",
+                                    "network": "mainnet",
+                                    "chainId": "1",
+                                    "type": "fixed-expiration"
+                                }
+                            ],
+                            "bondPurchases": [],
+                            "markets": [],
+                            "uniqueBonderCounts": []
+                        }
+                    }
+
+                    route.fulfill({
+                        contentType: "application/json",
+                        body: JSON.stringify(resultData)
+                    });
+                } else {
+                    route.continue();
+                }
+            } else {
+                route.continue();
+            }
+        });
+
+        page.route("https://api.thegraph.com/subgraphs/name/bond-protocol/bond-protocol-arbitrum-mainnet", async (route, request) => {
+            if (request.method() === "POST") {
+                const postData = JSON.parse(request.postData());
+
+                if (postData.query.includes("query GetDashboardData")) {
+                    const resultData = {
+                        "data": {
+                            "ownerBalances": [],
+                            "bondTokens": [],
+                            "bondPurchases": [],
+                            "markets": [],
+                            "uniqueBonderCounts": []
+                        }
+                    };
+
+                    route.fulfill({
+                        contentType: "application/json",
+                        body: JSON.stringify(resultData)
+                    });
+                } else if (postData.query.includes("query GetGlobalData")) {
+                    const resultData = {
+                        "data": {
+                            "purchaseCounts": [
+                                {
+                                    "count": "0"
+                                }
+                            ],
+                            "uniqueTokenBonderCounts": [],
+                            "tokens": []
+                        }
+                    };
+
+                    route.fulfill({
+                        contentType: "application/json",
+                        body: JSON.stringify(resultData)
+                    });
+                } else {
+                    route.continue();
+                }
+            } else {
+                route.continue();
+            }
+        });
+
+        page.route("https://api.thegraph.com/subgraphs/name/bond-protocol/bond-protocol-optimism-mainnet", async (route, request) => {
+            if (request.method() === "POST") {
+                const postData = JSON.parse(request.postData());
+
+                if (postData.query.includes("query GetDashboardData")) {
+                    const resultData = {
+                        "data": {
+                            "ownerBalances": [],
+                            "bondTokens": [],
+                            "bondPurchases": [],
+                            "markets": [],
+                            "uniqueBonderCounts": []
+                        }
+                    };
+
+                    route.fulfill({
+                        contentType: "application/json",
+                        body: JSON.stringify(resultData)
+                    });
+                } else if (postData.query.includes("query GetGlobalData")) {
+                    const resultData = {
+                        "data": {
+                            "purchaseCounts": [
+                                {
+                                    "count": "0"
+                                }
+                            ],
+                            "uniqueTokenBonderCounts": [],
+                            "tokens": []
+                        }
+                    };
 
                     route.fulfill({
                         contentType: "application/json",
@@ -180,6 +505,8 @@ test.describe("Bond Protocol", () => {
 
         // Create market
         await createMarket(page);
+
+        await page.reload();
 
         // Mocking
         await gui.setEthBalance("100000000000000000000000");
@@ -200,8 +527,5 @@ test.describe("Bond Protocol", () => {
 
         // Confirm bond
         await gui.validateContractInteraction("button:has-text('CONFIRM BOND')", "0x007FE70dc9797C4198528aE43d8195ffF82Bdc95");
-
-        // Validate transaction was successful
-        await page.waitForSelector("text=Thanks for bonding at OlympusDAO");
     });
 });

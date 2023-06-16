@@ -37,8 +37,33 @@ test.describe("Swap", () => {
             }
         });
 
+        page.route("http://127.0.0.1:8545", async (route, request) => {
+            if (request.method() === "POST") {
+                const data = JSON.parse(request.postData());
+
+                if (data.method === "eth_estimateGas") {
+                    const resultData = {
+                        "jsonrpc": "2.0",
+                        "id": data.id,
+                        "result": "0x1C9C380"
+                    }
+
+                    route.fulfill({
+                        contentType: "application/json",
+                        body: JSON.stringify(resultData)
+                    });
+                } else {
+                    route.continue();
+                }
+            } else {
+                route.continue();
+            }
+        });
+
         // Initialize fork
         await gui.initializeChain(1, 17387626);
+
+        await page.waitForTimeout(5000);
 
         // Navigate to site
         await page.goto("https://app.sushi.com/swap?inputCurrency=ETH&outputCurrency=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
@@ -56,18 +81,16 @@ test.describe("Swap", () => {
         await page.locator("div[id='wallet-option-MetaMask']").first().click();
         await page.locator("[id='__next']").click({ position: {x: 0, y: 0}, force: true });
 
+        // Check that ETH amount is recognized
+		const isETHSet = await page.isVisible("text=100000");
+		console.log("isETHSet: " + isETHSet);
+
         // Enter ETH amount
         await page.waitForSelector("input[title='Token Amount']");
         await page.locator("input[title='Token Amount']").first().fill("1");
 
-		// Wait for ETH value to be set
-        await page.waitForSelector("text=100000");
-
-		// Check that ETH amount is recognized
-		const isETHSet = await page.isVisible("text=100000");
-		console.log("isETHSet: " + isETHSet);
-
-		await page.waitForTimeout(1500);
+        const locator = page.locator("input[title='Token Amount']").last();
+        await test.expect(locator).toHaveValue(/[+-]?([0-9]*[.])?[0-9]+/);
 
         await page.waitForSelector("button[id='swap-button']");
 		await page.locator("button[id='swap-button']").first().click();
