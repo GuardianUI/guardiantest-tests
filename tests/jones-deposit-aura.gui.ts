@@ -27,6 +27,7 @@ test.describe("JonesDAO", () => {
         await page.locator(`h2:has-text('jAURA')`).click();
 
         // Enter input amount
+        await page.getByRole('complementary').getByPlaceholder('0.00').waitFor();
         await page.getByRole('complementary').getByPlaceholder('0.00').click();
         await page.getByRole('complementary').getByPlaceholder('0.00').fill('1.0');
         await page.getByRole('complementary').getByPlaceholder('0.00').press('Enter');
