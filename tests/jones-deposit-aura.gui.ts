@@ -6,7 +6,7 @@ test.describe("JonesDAO", () => {
         await gui.initializeChain(1);
 
         // Navigate to site
-        await page.goto("https://app.jonesdao.io/vaults/aura");
+        await page.goto("https://app.jonesdao.io/vaults");
 
         // Set up wallet
         const auraToken = "0xC0c293ce456fF0ED870ADd98a0828Dd4d2903DBF";
@@ -22,20 +22,22 @@ test.describe("JonesDAO", () => {
         await page.locator("input[name='countries']").check();
         await page.getByRole('button', { name: 'Accept Terms' }).click();
 
+        // Navigate to the AURA vault
+        // Do this after setting up the wallet and AURA balance, otherwise the dApp won't recognise the balance
+        await page.locator(`h2:has-text('jAURA')`).click();
+
         // Enter input amount
         await page.getByRole('complementary').getByPlaceholder('0.00').click();
-        await page.getByRole('complementary').getByPlaceholder('0.00').fill("0.1");
+        await page.getByRole('complementary').getByPlaceholder('0.00').fill('1.0');
+        await page.getByRole('complementary').getByPlaceholder('0.00').press('Enter');
 
         // Select vault
         await page.getByLabel('jAURA', { exact: true }).check();
 
-        // Approve
-        await page.getByRole('button', { name: 'Approve' }).click();
-
         // Execute
-        await page.getByRole('button', { name: 'Deposit' }).click();
+        await page.locator(`button:near(:text("Deposit into:"))`).click();
 
         // Submit stake transaction
-        await gui.validateContractInteraction("[label='Deposit']", depositContract);
+        await gui.validateContractInteraction(`button:near(:text("Deposit into:"))`, depositContract);
     });
 });
