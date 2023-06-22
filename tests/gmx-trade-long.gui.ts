@@ -1,7 +1,7 @@
 import { test } from '@guardianui/test';
 
 test.describe("GMX", () => {
-  test('test', async ({ page, gui }) => {
+  test('Long ETH', async ({ page, gui }) => {
     // Initialize fork
     await gui.initializeChain(42161, 17537124);
 
